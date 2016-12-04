@@ -16,13 +16,13 @@ namespace FantasticBits
             int mana = 0;
             if (myTeamId == 0)
             {
-                myGoal = new Goal(0, 3750, 5600, 1900);
-                oppGoal = new Goal(16000, 3750, 5600, 1900);
+                myGoal = new Goal(0, 3750, 5500, 2000);
+                oppGoal = new Goal(16000, 3750, 5500, 2000);
             }
             else
             {
-                myGoal = new Goal(16000, 3750, 5600, 1900);
-                oppGoal = new Goal(0, 3750, 5600, 1900);
+                myGoal = new Goal(16000, 3750, 5500, 2000);
+                oppGoal = new Goal(0, 3750, 5500, 2000);
             }
             // game loop
             while (true)

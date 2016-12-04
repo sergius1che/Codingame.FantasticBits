@@ -22,6 +22,10 @@ namespace FantasticBits
         public int State { get { return _state; } }
         public int Radius { get { return _radius; } }
 
+        public Entity()
+        {
+
+        }
         public Entity(string str)
         {
             string[] inputs = str.Split(' ');

@@ -33,16 +33,19 @@ namespace FantasticBits
                 if (W.State == 0)
                 {
                     if (i == 0)
-                        Raider(W);
-                    else
                         Defender(W);
+                    else
+                        Raider(W);
                 }
                 else
                 {
-                    Point p = GetOptimalWay(W, OppGoal);
-                    p.Y += (-1) * W.VY;
+                    Point p = new Point()
+                    {
+                        X = OppGoal.X,
+                        Y = OppGoal.Y + (-1) * W.VY
+                    };
                     Console.Error.WriteLine($"THROW {p} 500");
-                    Console.WriteLine($"THROW {OppGoal.Pos()} 500");
+                    Console.WriteLine($"THROW {p.Pos()} 500");
                 }
             }
             return mana;
@@ -50,38 +53,24 @@ namespace FantasticBits
 
         public void Raider(Wizard w)
         {
-            Snaffle nearSnaf = GetNearSnuffle(OppGoal);
+            Snaffle nearSnaf = GetNearSnuffle(w);
             if (nearSnaf != null)
             {
-                nearSnaf.Reserve = true;
-                Point p = GetOptimalWay(w, nearSnaf);
-                p.X += nearSnaf.VX;
-                p.Y += nearSnaf.VY;
-                Console.Error.WriteLine($"MOVE {p} 150");
-                Console.WriteLine($"MOVE {p.Pos()} 150");
-            }
-            else
-            {
-                Point o = GetNear(OppGoal, new List<Point>(Opponents));
-                Console.WriteLine($"MOVE {o.Pos()} 150");
-            }
-        }
-
-        public void Defender(Wizard w)
-        {
-            Snaffle nearSnaf = GetNearSnuffle(MyGoal);
-            if (nearSnaf != null)
-            {
-                nearSnaf.Reserve = true;
-                if (MyGoal.PrecisionLength(w) > MyGoal.PrecisionLength(nearSnaf)
-                && mana > 20)
+                Entity snafToFlip = FlipendoOn(w);
+                if (snafToFlip != null && mana > 20)
                 {
                     mana -= 20;
-                    Console.WriteLine($"ACCIO {nearSnaf.Id}");
+                    Console.WriteLine($"FLIPENDO {snafToFlip.Id}");
+                }
+                else if (mana > 25)
+                {
+                    Entity b = (Entity)GetNear(w, new List<Point>(Bludger));
+                    Console.WriteLine($"OBLIVIATE {b.Id}");
                 }
                 else
                 {
-                    Point p = GetOptimalWay(w, nearSnaf);
+                    nearSnaf.Reserve = true;
+                    Point p = nearSnaf;
                     p.X += nearSnaf.VX;
                     p.Y += nearSnaf.VY;
                     Console.Error.WriteLine($"MOVE {p} 150");
@@ -95,11 +84,109 @@ namespace FantasticBits
             }
         }
 
+        public void Defender(Wizard w)
+        {
+            List<Snaffle> toDef = Snaffles.Where(x => x.PrecisionLength(MyGoal) <= 8000).ToList();
+            Snaffle nearSnaf = GetNearSnuffle(w, toDef);
+            Snaffle acio = AccioOn(w);
+            Snaffle fastSnaf = Snaffles
+                .Where(x => ((x.VX + Math.Abs(x.VY) <= -1200 && myTeamId == 0) || (x.VX + Math.Abs(x.VY) >= 1200 && myTeamId == 1)) && !x.Reserve)
+                .FirstOrDefault();
+            if (nearSnaf != null)
+            {
+                Snaffle snafToFlip = FlipendoOn(w);
+                if (snafToFlip != null && mana > 20)
+                {
+                    snafToFlip.Reserve = true;
+                    mana -= 20;
+                    Console.Error.WriteLine($"{snafToFlip} {snafToFlip.VX} {snafToFlip.VY}");
+                    Console.WriteLine($"FLIPENDO {snafToFlip.Id}");
+                }
+
+                else if (fastSnaf != null
+                && mana > 10)
+                {
+                    fastSnaf.Reserve = true;
+                    mana -= 10;
+                    Console.Error.WriteLine($"{fastSnaf} {fastSnaf.VX} {fastSnaf.VY}");
+                    Console.WriteLine($"PETRIFICUS {fastSnaf.Id}");
+                }
+                else if (acio != null && mana > 20)
+                {
+                    acio.Reserve = true;
+                    mana -= 20;
+                    Console.Error.WriteLine($"{acio} {acio.VX} {acio.VY}");
+                    Console.WriteLine($"ACCIO {acio.Id}");
+                }
+                else
+                {
+                    nearSnaf.Reserve = true;
+                    Point p = nearSnaf;
+                    p.X += nearSnaf.VX;
+                    p.Y += nearSnaf.VY;
+                    Console.Error.WriteLine($"MOVE {p} 150");
+                    Console.WriteLine($"MOVE {p.Pos()} 150");
+                }
+            }
+            else
+            {
+                Point o = GetNear(OppGoal, new List<Point>(Opponents));
+                Console.WriteLine($"MOVE {o.Pos()} 150");
+            }
+        }
+
+        public Snaffle AccioOn(Wizard w)
+        {
+            Point w2 = new Point()
+            {
+                X = w.X + w.VX,
+                Y = w.Y + w.VY
+            };
+            bool op = Opponents.Any(x => Between(x.X + x.VX, w2.X, MyGoal.X));
+            List<Snaffle> snf = Snaffles.Where(x => Between(x.X, w2.X, MyGoal.X)).ToList();
+            if (snf.Count > 0 && op)
+            {
+                Snaffle s = GetNearSnuffle(w2, snf);
+                if (w2.PrecisionLength(s) < 2000)
+                    return s;
+            }
+            return null;
+        }
+
+        public Snaffle FlipendoOn(Wizard w)
+        {
+            Point w2 = new Point()
+            {
+                X = w.X + (int)(w.VX * 0.75),
+                Y = w.Y + (int)(w.VY * 0.75)
+
+            };
+
+            List<Snaffle> snfls = Snaffles.Where(x => Between((int)(x.X + x.VX * 0.75), w2.X, OppGoal.X)).ToList();
+            Point s = GetNear(w2, new List<Point>(snfls));
+            int Y = (int)Fx(OppGoal.X, w2, s);
+            if (Between(Y, OppGoal.YDown, OppGoal.YTop) && w2.PrecisionLength(s) < 2450D)
+                return s as Snaffle;
+            else
+                return null;
+        }
+
+        public bool Between(int val, int border1, int border2)
+        {
+            if (border1 > border2)
+            {
+                int b = border2;
+                border2 = border1;
+                border1 = b;
+            }
+            return border1 < val && val < border2;
+        }
+
         public Point GetNear(Point point, List<Point> points)
         {
             double min = 16000D;
             Point near = null;
-            for(int i = 0; i < points.Count; i++)
+            for (int i = 0; i < points.Count; i++)
             {
                 double b = point.PrecisionLength(points[i]);
                 if (min > b)
@@ -113,67 +200,33 @@ namespace FantasticBits
             return point;
         }
 
-        public Point GetOptimalWay(Wizard w, Point target)
+        public double Fx(int x, IPos A, IPos B)
         {
-            List<Entity> entities = new List<Entity>(this.Bludger.Count + this.Opponents.Count);
-            entities.AddRange(this.Bludger.Where(x => x.X < target.X && x.X > w.X).ToList());
-            entities.AddRange(this.Opponents.Where(x => x.X < target.X && x.X > w.X).ToList());
-            double min = 16000D;
-            Entity e = null;
-            for(int i = 0; i < entities.Count; i++)
-            {
-                double buf = entities[i].PrecisionLength(target);
-                double lenToWay = GetLenToWay(w, target, entities[i]);
-                if (buf < min && Math.Abs(lenToWay) <= w.Radius * 2)
-                {
-                    min = buf;
-                    e = entities[i];
-                }
-            }
-            if (e != null)
-                return GetOptimalPoint(w, target, e, w.Radius * 2);
-            else
-                return target;
+            int bxax = B.X - A.X;
+            bxax = bxax == 0 ? 1 : bxax;
+            return (x - A.X) * (B.Y - A.Y) / (bxax) + A.Y;
         }
 
-        public double GetLenToWay(IPos start, IPos end, IPos barier)
+        public double Fy(int y, IPos A, IPos B)
         {
-            double a = (barier.X - start.X) * (end.Y - start.Y) / (end.X - start.X) + start.Y - (double)barier.Y;
-            double b = (end.X - start.X) * (barier.Y - start.Y) / (end.Y - start.Y) + start.X - (double)barier.X;
-            Point A = new Point() { X = barier.X, Y = barier.Y + (int)Math.Round(a, 0) };
-            Point B = new Point() { X = barier.X + (int)Math.Round(b, 0), Y = barier.Y };
-            return a * b / A.PrecisionLength(B);
+            int byay = B.Y - A.Y;
+            byay = byay == 0 ? 1 : byay;
+            return (B.X - A.X) * (y - A.Y) / (byay) + A.X;
         }
 
-        public Point GetOptimalPoint(IPos A, IPos B, IPos C, double r = 800D)
+        public Snaffle GetNearSnuffle(Point point, List<Snaffle> cur = null)
         {
-            double a = (C.X - A.X) * (B.Y - A.Y) / (B.X - A.X) + A.Y - C.Y;
-            double b = (B.X - A.X) * (C.Y - A.Y) / (B.Y - A.Y) + A.X - C.X;
-            double c = Math.Sqrt(a*a + b*b);
-            double h = a * b / c;
-            double c2 = b * r / h;
-            Point D = new Point();
-            D.X = (int)Math.Round(C.X + (Math.Sqrt(c2*c2 - r*r)) * r / c2, 0);
-            D.Y = (int)Math.Round(C.Y + a,0);
-            if (D.X < 0 || D.X > 16000 || D.Y < 0 || D.Y > 16000)
-                return new Point() { X = A.X, Y = A.Y };
-            return D;
-        }
-
-        public Snaffle GetNearSnuffle(Point point)
-        {
+            cur = cur == null ? Snaffles : cur;
             double min = 16000D;
             int vx = myTeamId == 0 ? 150 : -150;
             Snaffle s = null;
-            for (int i = 0; i < Snaffles.Count; i++)
+            for (int i = 0; i < cur.Count; i++)
             {
-                double buf = point.PrecisionLength(Snaffles[i]);
+                double buf = point.PrecisionLength(cur[i]);
                 if (buf < min
-                && ((Snaffles[i].VX <= vx && myTeamId == 0)
-                    || (Snaffles[i].VX >= vx && myTeamId == 1))
-                && !Snaffles[i].Reserve)
+                && (!Snaffles[i].Reserve || Snaffles.Count == 1))
                 {
-                    s = Snaffles[i];
+                    s = cur[i];
                     min = buf;
                 }
             }

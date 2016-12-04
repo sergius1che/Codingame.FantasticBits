@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace FantasticBits
 {
-    public class Goal : Point, IPos
+    public class Goal : Entity
     {
         public int YTop { get; set; }
         public int YDown { get; set; }
